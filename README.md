@@ -20,6 +20,7 @@ Axelle MD is a pharmacy management system for Ghanaian pharmacies. It uses React
    SUPABASE_SERVICE_ROLE_KEY=your-server-only-service-role-key
    SESSION_SECRET=generate-at-least-32-random-characters
    MANAGER_APPROVAL_PASSWORD=choose-a-long-private-approval-password
+   PASSWORD_RESET_REDIRECT_URL=https://your-frontend.example.com/
    ```
 
    `VITE_SUPABASE_URL` and `SUPABASE_URL` must point to the same Supabase project. `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are used only for Supabase Auth in the browser. Keep `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, and `MANAGER_APPROVAL_PASSWORD` server-side; never prefix them with `VITE_` or commit them.
@@ -39,7 +40,7 @@ Axelle MD is a pharmacy management system for Ghanaian pharmacies. It uses React
 
 If the app shows **“Secure API setup is incomplete”**, confirm the server has `SUPABASE_URL` (or `VITE_SUPABASE_URL`), `SUPABASE_SERVICE_ROLE_KEY`, and a `SESSION_SECRET` containing at least 32 characters. After changing `.env`, stop and restart `npm run dev`. Get the service-role/secret key from your Supabase project's API settings; do not use the public anon key for `SUPABASE_SERVICE_ROLE_KEY`.
 
-The app can be deployed with the Node/Express server and built React app together on a Node.js host, or split between Vercel (frontend) and Render (API). For the split setup, the Vercel rewrite in `vercel.json` proxies `/api/*` to the Render service while keeping browser requests on the Vercel origin; update its destination if the Render service URL changes. Keep Vercel's `outputDirectory` set to `dist`. Configure the server environment variables on Render and the browser Supabase variables on Vercel. Production session cookies are `HttpOnly`, `Secure`, and `SameSite=Strict`.
+The app can be deployed with the Node/Express server and built React app together on a Node.js host, or split between Vercel (frontend) and Render (API). For the split setup, the Vercel rewrite in `vercel.json` proxies `/api/*` to the Render service while keeping browser requests on the Vercel origin; update its destination if the Render service URL changes. Keep Vercel's `outputDirectory` set to `dist`. Configure the server environment variables on Render and the browser Supabase variables on Vercel. Set `PASSWORD_RESET_REDIRECT_URL` on the server to the frontend URL, and add that exact URL to Supabase Authentication → URL Configuration → Redirect URLs. Production session cookies are `HttpOnly`, `Secure`, and `SameSite=Strict`.
 
 ## Authentication and data protection
 

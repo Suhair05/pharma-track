@@ -34,14 +34,16 @@ const inventoryItem = {
 let pharmacyInsertError: { code: string; message: string; details?: string; hint?: string } | null = null;
 let deletedInventoryItemId: string | null = null;
 let requestedPasswordResetEmail: string | null = null;
+let requestedPasswordResetRedirect: string | undefined;
 let updatedPassword: string | null = null;
 const stockAdjustmentCalls: { functionName: string; params: Record<string, unknown> }[] = [];
 
 function mockSupabase() {
   return {
     auth: {
-      async resetPasswordForEmail(email: string) {
+      async resetPasswordForEmail(email: string, options?: { redirectTo?: string }) {
         requestedPasswordResetEmail = email;
+        requestedPasswordResetRedirect = options?.redirectTo;
         return { data: {}, error: null };
       },
       async getUser(token: string) {
@@ -522,15 +524,25 @@ test('inventory item deletion is pharmacy-scoped and returns success for an exis
 
 test('password recovery requests and updates are handled by the server API', async () => {
   requestedPasswordResetEmail = null;
+  requestedPasswordResetRedirect = undefined;
   updatedPassword = null;
-  const request = await fetch(`${baseUrl}/api/auth/password-reset`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'manager@example.test' }),
-  });
+  const previousRedirect = process.env.PASSWORD_RESET_REDIRECT_URL;
+  process.env.PASSWORD_RESET_REDIRECT_URL = 'https://pharma-track-lime.vercel.app/';
+  let request: Response;
+  try {
+    request = await fetch(`${baseUrl}/api/auth/password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'manager@example.test' }),
+    });
+  } finally {
+    if (previousRedirect === undefined) delete process.env.PASSWORD_RESET_REDIRECT_URL;
+    else process.env.PASSWORD_RESET_REDIRECT_URL = previousRedirect;
+  }
   assert.equal(request.status, 200);
   assert.deepEqual(await request.json(), { success: true });
   assert.equal(requestedPasswordResetEmail, 'manager@example.test');
+  assert.equal(requestedPasswordResetRedirect, 'https://pharma-track-lime.vercel.app/');
 
   const update = await fetch(`${baseUrl}/api/auth/password-reset/complete`, {
     method: 'POST',

@@ -245,7 +245,29 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
         res.status(400).json({ error: 'Enter a valid email address.' });
         return;
       }
-      const { error } = await supabase!.auth.resetPasswordForEmail(email.trim());
+      const configuredRedirect = process.env.PASSWORD_RESET_REDIRECT_URL?.trim();
+      let redirectTo: string | undefined;
+      if (configuredRedirect) {
+        try {
+          const redirectUrl = new URL(configuredRedirect);
+          if (
+            !['https:', 'http:'].includes(redirectUrl.protocol) ||
+            (redirectUrl.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(redirectUrl.hostname))
+          ) {
+            throw new Error('Invalid password reset redirect URL.');
+          }
+          redirectTo = redirectUrl.toString();
+        } catch {
+          res.status(503).json({
+            error: 'Password reset redirect configuration is invalid. Use the HTTPS URL of your frontend.',
+          });
+          return;
+        }
+      }
+      const { error } = await supabase!.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo ? { redirectTo } : undefined,
+      );
       if (error) {
         console.error('Password reset email request failed:', error.message);
         res.status(500).json({ error: 'We could not send the reset email right now. Please try again.' });
