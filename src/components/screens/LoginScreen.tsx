@@ -5,6 +5,7 @@ interface LoginScreenProps {
   onSubmit: (email: string, password: string, remember: boolean) => Promise<void>;
   onForgotPassword?: (email: string) => void;
   onCreateAccount?: () => void;
+  onViewPolicies?: () => void;
   initialEmail?: string;
   notice?: string;
 }
@@ -15,7 +16,7 @@ const POINTS = [
   'Works on your phone at the counter',
 ];
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onSubmit, onForgotPassword, onCreateAccount, initialEmail = '', notice }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onSubmit, onForgotPassword, onCreateAccount, onViewPolicies, initialEmail = '', notice }) => {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -180,6 +181,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSubmit, onForgotPass
               Don't have an account?{' '}
               <button onClick={onCreateAccount} className="font-semibold text-brand-600 hover:text-brand-700">
                 Create your account
+              </button>
+            </p>
+          )}
+          {onViewPolicies && (
+            <p className="mt-4 text-center text-xs text-slate-500">
+              <button type="button" onClick={onViewPolicies} className="underline underline-offset-2 hover:text-brand-700">
+                About, privacy, terms & cookies
               </button>
             </p>
           )}

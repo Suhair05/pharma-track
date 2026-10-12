@@ -80,4 +80,5 @@ export type ActiveScreen =
   | 'management-access'
   | 'management-patients'
   | 'management-locations'
-  | 'management-barcode';
+  | 'management-barcode'
+  | 'about-policies';

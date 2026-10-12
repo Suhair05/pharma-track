@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   LayoutDashboard,
   Layers,
@@ -15,6 +15,7 @@ import {
   Users,
   Barcode,
   Building2,
+  Info,
 } from 'lucide-react';
 import { usePharmacy } from '../context/PharmacyContext';
 import { useProfile } from '../context/ProfileContext';
@@ -38,6 +39,7 @@ const navItems: { id: ActiveScreen; label: string; icon: React.ElementType }[] =
   { id: 'sales', label: 'Sales & Business', icon: ShoppingCart },
   { id: 'finance', label: 'Finance & Accounts', icon: DollarSign },
   { id: 'reconciliation', label: 'Reconciliation', icon: RefreshCw },
+  { id: 'about-policies', label: 'About & policies', icon: Info },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) => {
@@ -60,6 +62,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     !managementRoles[id] || managementRoles[id].includes(role),
   );
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileOpen?.(false);
+        document.querySelector<HTMLButtonElement>('[aria-controls="app-sidebar"]')?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, setMobileOpen]);
+
   const handleNavClick = (screen: ActiveScreen) => {
     setActiveScreen(screen);
     setMobileOpen?.(false);
@@ -77,6 +91,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
       />
 
       <aside
+        id="app-sidebar"
+        aria-label="Application navigation"
         className={`
           fixed inset-y-0 left-0 z-40 flex w-64 flex-col justify-between border-r border-slate-200 bg-white
           transition-transform duration-200 ease-out lg:static lg:h-screen lg:translate-x-0
@@ -124,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
                       : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
-                  <Icon className={`h-[18px] w-[18px] ${isActive ? 'text-brand-600' : 'text-slate-400'}`} />
+                  <Icon aria-hidden="true" className={`h-[18px] w-[18px] ${isActive ? 'text-brand-600' : 'text-slate-400'}`} />
                   {label}
                 </button>
               );

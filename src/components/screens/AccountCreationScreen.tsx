@@ -4,12 +4,13 @@ import { Loader2 } from 'lucide-react';
 interface AccountCreationScreenProps {
   onSubmit: (email: string, password: string, approvalPassword: string) => Promise<void>;
   onBackToLogin: () => void;
+  onViewPolicies: () => void;
 }
 
 const inputClass =
   'h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20';
 
-export const AccountCreationScreen: React.FC<AccountCreationScreenProps> = ({ onSubmit, onBackToLogin }) => {
+export const AccountCreationScreen: React.FC<AccountCreationScreenProps> = ({ onSubmit, onBackToLogin, onViewPolicies }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [approvalPassword, setApprovalPassword] = useState('');
@@ -113,6 +114,11 @@ export const AccountCreationScreen: React.FC<AccountCreationScreenProps> = ({ on
           Already have an account?{' '}
           <button onClick={onBackToLogin} className="font-semibold text-brand-600 hover:text-brand-700">
             Sign in
+          </button>
+        </p>
+        <p className="mt-4 text-center text-xs text-slate-500">
+          <button type="button" onClick={onViewPolicies} className="underline underline-offset-2 hover:text-brand-700">
+            About, privacy, terms & cookies
           </button>
         </p>
       </div>

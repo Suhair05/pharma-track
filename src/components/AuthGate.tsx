@@ -3,6 +3,7 @@ import { supabase, supabaseConfigurationError } from '../lib/supabaseClient';
 import { LoginScreen } from './screens/LoginScreen';
 import { AccountCreationScreen } from './screens/AccountCreationScreen';
 import { PasswordActionModal } from './PasswordActionModal';
+import { AboutPoliciesScreen } from './screens/AboutPoliciesScreen';
 import { ProfileProvider, ProfileGate } from '../context/ProfileContext';
 import { apiGet, apiPost } from '../services/api';
 
@@ -11,6 +12,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [userId, setUserId] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [creatingAccount, setCreatingAccount] = useState(false);
+  const [viewingPolicies, setViewingPolicies] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [sessionError, setSessionError] = useState('');
   const [passwordResetEmail, setPasswordResetEmail] = useState<string | null>(null);
@@ -56,12 +58,16 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         {sessionError}
       </div>
     );
+    if (viewingPolicies) {
+      return <AboutPoliciesScreen onBack={() => setViewingPolicies(false)} />;
+    }
     if (creatingAccount) {
       return (
         <>
           {warning}
           <AccountCreationScreen
             onBackToLogin={() => setCreatingAccount(false)}
+            onViewPolicies={() => setViewingPolicies(true)}
             onSubmit={async (email, password, approvalPassword) => {
               if (supabaseConfigurationError) throw new Error(supabaseConfigurationError);
               await apiPost<{ message: string }>(
@@ -89,6 +95,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
           }}
           onSubmit={establishSession}
           onForgotPassword={(email) => setPasswordResetEmail(email)}
+          onViewPolicies={() => setViewingPolicies(true)}
         />
         {passwordResetEmail !== null && (
           <PasswordActionModal

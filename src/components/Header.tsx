@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import { apiRequest } from '../services/api';
 
 interface HeaderProps {
+  mobileMenuOpen: boolean;
   onMenuClick: () => void;
 }
 
@@ -19,7 +20,7 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, onOutside: ()
   }, [ref, onOutside]);
 }
 
-export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+export const Header: React.FC<HeaderProps> = ({ mobileMenuOpen, onMenuClick }) => {
   const { items, setSelectedItemId, setActiveScreen, setIsSchemaModalOpen } = usePharmacy();
   const { profile } = useProfile();
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,8 +94,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           onClick={onMenuClick}
           className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
           aria-label="Open menu"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="app-sidebar"
         >
-          <Menu className="h-5 w-5" />
+          <Menu aria-hidden="true" className="h-5 w-5" />
         </button>
 
         <div className="relative flex-1" ref={searchRef}>
@@ -102,6 +105,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <input
             ref={inputRef}
             type="text"
+            aria-label="Search inventory by drug, batch, or code"
             placeholder="Search drug, batch or code"
             value={searchTerm}
             onChange={(e) => {
