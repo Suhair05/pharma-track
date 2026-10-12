@@ -303,7 +303,7 @@ test('unknown API routes return JSON instead of the SPA HTML fallback', async ()
   assert.deepEqual(await response.json(), { error: 'API endpoint not found.' });
 });
 
-test('Vercel forwards API routes through one dispatcher without rewriting the dispatcher recursively', async () => {
+test('Vercel forwards API routes to the Render backend', async () => {
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8')) as {
     outputDirectory: string;
     rewrites: Array<{ source: string; destination: string }>;
@@ -311,7 +311,7 @@ test('Vercel forwards API routes through one dispatcher without rewriting the di
   assert.equal(config.outputDirectory, 'dist');
   assert.deepEqual(config.rewrites, [{
     source: '/api/:path((?!dispatch(?:/|$)).*)',
-    destination: '/api/dispatch?__axellePath=/api/:path',
+    destination: 'https://pharma-track-81vd.onrender.com/api/:path',
   }]);
 });
 

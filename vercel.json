@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/:path((?!dispatch(?:/|$)).*)",
-      "destination": "/api/dispatch?__axellePath=/api/:path"
+      "destination": "https://pharma-track-81vd.onrender.com/api/:path"
     }
   ]
 }
