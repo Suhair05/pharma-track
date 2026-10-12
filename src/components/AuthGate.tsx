@@ -49,7 +49,11 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   if (checking) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Checking your secure session</div>;
+    return (
+      <div role="status" aria-label="Loading Axelle MD" className="flex min-h-screen items-center justify-center">
+        <img src="/favicon.svg" alt="" aria-hidden="true" className="h-16 w-16" />
+      </div>
+    );
   }
 
   if (!userId) {

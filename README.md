@@ -42,6 +42,8 @@ If the app shows **“Secure API setup is incomplete”**, confirm the server ha
 
 The app can be deployed with the Node/Express server and built React app together on a Node.js host, or split between Vercel (frontend) and Render (API). For the split setup, the Vercel rewrite in `vercel.json` proxies `/api/*` to the Render service while keeping browser requests on the Vercel origin; update its destination if the Render service URL changes. Keep Vercel's `outputDirectory` set to `dist`. Configure the server environment variables on Render and the browser Supabase variables on Vercel. Set `PASSWORD_RESET_REDIRECT_URL` on the server to the frontend URL, and add that exact URL to Supabase Authentication → URL Configuration → Redirect URLs. Production session cookies are `HttpOnly`, `Secure`, and `SameSite=Strict`.
 
+If login reports **“No API key found in request”**, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the Vercel project's frontend environment variables for the deployment environment, then redeploy. These browser variables must be present when Vite builds the frontend; setting `SUPABASE_SERVICE_ROLE_KEY` on Render does not provide the browser's Supabase Auth API key. Production builds now fail with an actionable error when either frontend variable is missing.
+
 ## Authentication and data protection
 
 - Supabase Auth verifies credentials. The browser sends its short-lived Supabase access token once to `POST /api/auth/session`.
