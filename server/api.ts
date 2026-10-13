@@ -313,6 +313,55 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
     }
   });
 
+  app.get('/api/management/pharmacies', requireConfiguration, authenticate, requireRoles('admin'), async (_req, res, next) => {
+    try {
+      const userId = res.locals.userId as string;
+      const owned = await supabase!
+        .from('pharmacies')
+        .select(profileColumns)
+        .eq('owner_id', userId);
+      if (owned.error) {
+        logPharmacyLookupFailure(owned.error);
+        res.status(500).json({ error: 'We could not load your pharmacies.' });
+        return;
+      }
+
+      const memberships = await supabase!
+        .from('pharmacy_staff')
+        .select('pharmacy_id, role')
+        .eq('user_id', userId)
+        .eq('active', true);
+      if (memberships.error) {
+        console.error('Pharmacy memberships lookup failed:', memberships.error.message);
+        res.status(500).json({ error: 'We could not load your pharmacy memberships.' });
+        return;
+      }
+
+      const ownedProfiles = owned.data ?? [];
+      const ownedIds = new Set(ownedProfiles.map((pharmacy) => pharmacy.id));
+      const memberPharmacyIds = (memberships.data ?? [])
+        .filter((membership) => !ownedIds.has(membership.pharmacy_id))
+        .map((membership) => membership.pharmacy_id);
+      const memberProfiles = memberPharmacyIds.length > 0
+        ? await supabase!.from('pharmacies').select(profileColumns).in('id', memberPharmacyIds)
+        : { data: [], error: null };
+      if (memberProfiles.error) {
+        logPharmacyLookupFailure(memberProfiles.error);
+        res.status(500).json({ error: 'We could not load your pharmacy memberships.' });
+        return;
+      }
+
+      const roles = new Map((memberships.data ?? []).map((membership) => [membership.pharmacy_id, membership.role]));
+      const pharmacies = [
+        ...ownedProfiles.map((pharmacy) => ({ ...pharmacy, role: 'admin' })),
+        ...(memberProfiles.data ?? []).map((pharmacy) => ({ ...pharmacy, role: roles.get(pharmacy.id) })),
+      ];
+      res.json({ pharmacies });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post('/api/auth/password-reset', requireConfiguration, async (req, res, next) => {
     try {
       const email = isRecord(req.body) ? req.body.email : undefined;

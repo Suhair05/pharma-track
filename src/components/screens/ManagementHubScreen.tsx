@@ -78,8 +78,9 @@ const PAGE_TITLES: Record<HubTab, string> = {
 
 export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initialTab = 'insights' }) => {
   const { setActiveScreen, setSelectedItemId, reloadInventory, setSelectedLocationId } = usePharmacy();
-  const { profile } = useProfile();
+  const { profile, selectPharmacy, pharmacies } = useProfile();
   const { showConfirmation } = useNotification();
+  const [allPharmacies, setAllPharmacies] = useState<any[]>([]);
   const [tab, setTab] = useState<HubTab>(initialTab);
   const [data, setData] = useState<ManagementData>(emptyData);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -134,6 +135,11 @@ export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initial
   useEffect(() => {
     if (tab === 'patients' && (profile?.role === 'admin' || profile?.role === 'pharmacist')) void loadPatients();
     if (tab === 'access' && profile?.role === 'admin') void loadStaff();
+    if (tab === 'locations' && profile?.role === 'admin') {
+      void apiGet<{ pharmacies: any[] }>('/api/management/pharmacies')
+        .then(({ pharmacies }) => setAllPharmacies(pharmacies))
+        .catch(() => setAllPharmacies([]));
+    }
   }, [tab, profile?.role, loadPatients, loadStaff]);
 
   const runAction = async (action: () => Promise<unknown>, message: string) => {
@@ -508,6 +514,38 @@ export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initial
                       );
                     }} className="text-left flex-1 hover:bg-slate-50 rounded px-2 py-1 -ml-2 transition-colors cursor-pointer"><span><strong className="text-slate-800">{location.name}</strong>{location.is_primary && <span className="ml-2 rounded-full bg-brand-50 px-2 py-1 text-xs text-brand-700">Primary</span>}<span className="block text-xs text-slate-500">{location.address || 'No address recorded'}</span></span></button><span className="text-right font-medium text-slate-600">{qty} units</span></li>;
                   })}</ul> : <Empty>No locations have been set up.</Empty>}
+                  
+                  {allPharmacies.length > 0 && (
+                    <div className="mt-4 border-t border-slate-100 pt-4">
+                      <h3 className="text-sm font-semibold text-slate-800 mb-3">Separate Pharmacies</h3>
+                      <ul className="divide-y divide-slate-100">
+                        {allPharmacies.map((pharmacy) => (
+                          <li key={pharmacy.id} className="flex justify-between gap-3 py-3 text-sm">
+                            <button 
+                              onClick={() => {
+                                showConfirmation(
+                                  `Switch to ${pharmacy.name}`,
+                                  'This will switch to a completely separate pharmacy with its own inventory and records.',
+                                  () => {
+                                    void selectPharmacy(pharmacy.id).catch(() => undefined);
+                                  },
+                                  'warning'
+                                );
+                              }}
+                              className="text-left flex-1 hover:bg-slate-50 rounded px-2 py-1 -ml-2 transition-colors cursor-pointer"
+                            >
+                              <span className="flex items-center gap-2">
+                                <strong className="text-slate-800">{pharmacy.name}</strong>
+                                <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs text-emerald-700">Separate Pharmacy</span>
+                              </span>
+                            </button>
+                            <span className="text-right font-medium text-slate-600">{pharmacy.role || 'owner'}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
                   {profile?.role === 'admin' && <form className="mt-4 space-y-3 border-t border-slate-100 pt-4" onSubmit={(event) => {
                     event.preventDefault(); const form = new FormData(event.currentTarget); const body = Object.fromEntries(form.entries());
                     void runAction(() => apiPost('/api/management/locations', body), 'Location added.');
@@ -515,6 +553,10 @@ export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initial
                   }}>
                     <input name="name" required maxLength={120} placeholder="Store / location name" className={controlClass} />
                     <input name="address" maxLength={300} placeholder="Address or storage description" className={controlClass} />
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" name="createAsPharmacy" id="createAsPharmacy" className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                      <label htmlFor="createAsPharmacy" className="text-sm text-slate-600">Create as separate pharmacy (independent inventory)</label>
+                    </div>
                     <button disabled={busy} className={buttonClass}><Plus className="h-4 w-4" />Add location</button>
                   </form>}
                 </Panel>
