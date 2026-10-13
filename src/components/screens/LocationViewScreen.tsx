@@ -110,6 +110,30 @@ export const LocationViewScreen: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-12">
+      {/* Location Banner */}
+      <div className="rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-amber-200 flex items-center justify-center">
+              <Package className="h-4 w-4 text-amber-700" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-amber-900">Location View</h2>
+              <p className="text-xs text-amber-700">Viewing inventory and operations for: {locationName || 'Unknown Location'}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setSelectedLocationId(null);
+              setActiveScreen('management-locations');
+            }}
+            className="text-xs font-semibold text-amber-700 hover:text-amber-900"
+          >
+            Back to all locations
+          </button>
+        </div>
+      </div>
+
       {/* Title + actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-3">
@@ -129,14 +153,17 @@ export const LocationViewScreen: React.FC = () => {
             </h1>
             <p className="mt-1 flex items-center gap-3 text-sm text-slate-500">
               {today}
-              <span className="text-xs font-medium text-brand-600">Location View</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                <Package className="h-3 w-3" />
+                Location Mode
+              </span>
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={openDispense}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-amber-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-amber-700"
           >
             <ShoppingCart className="h-4 w-4" />
             New sale
@@ -164,15 +191,15 @@ export const LocationViewScreen: React.FC = () => {
           <button
             key={label}
             onClick={openInventory}
-            className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition-shadow hover:shadow-md ${tone}`}
+            className={`flex items-center gap-4 rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 text-left transition-shadow hover:shadow-md hover:border-amber-300`}
           >
-            <Icon className="h-6 w-6 shrink-0" />
+            <Icon className="h-6 w-6 shrink-0 text-amber-700" />
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold tabular-nums">{value}</span>
-                <span className="text-sm font-semibold">{label}</span>
+                <span className="text-2xl font-bold tabular-nums text-amber-900">{value}</span>
+                <span className="text-sm font-semibold text-amber-800">{label}</span>
               </div>
-              <div className="truncate text-xs opacity-80">{hint}</div>
+              <div className="truncate text-xs text-amber-700">{hint}</div>
             </div>
           </button>
         ))}
@@ -180,51 +207,51 @@ export const LocationViewScreen: React.FC = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <div className="text-sm font-medium text-slate-500">Total items</div>
-          <div className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{items.length}</div>
-          <div className="mt-3 text-xs text-slate-400">Items in this location</div>
+        <Card className="border-amber-200 bg-amber-50">
+          <div className="text-sm font-medium text-amber-700">Total items</div>
+          <div className="mt-2 text-2xl font-bold tabular-nums text-amber-900">{items.length}</div>
+          <div className="mt-3 text-xs text-amber-600">Items in this location</div>
         </Card>
-        <Card>
-          <div className="text-sm font-medium text-slate-500">Inventory at cost</div>
-          <div className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{money(inventoryValue)}</div>
-          <div className="mt-3 text-xs text-slate-400">Current stock value</div>
+        <Card className="border-amber-200 bg-amber-50">
+          <div className="text-sm font-medium text-amber-700">Inventory at cost</div>
+          <div className="mt-2 text-2xl font-bold tabular-nums text-amber-900">{money(inventoryValue)}</div>
+          <div className="mt-3 text-xs text-amber-600">Current stock value</div>
         </Card>
-        <Card>
-          <div className="text-sm font-medium text-slate-500">Total units</div>
-          <div className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{items.reduce((sum, item) => sum + item.currentBalance, 0)}</div>
-          <div className="mt-3 text-xs text-slate-400">All items combined</div>
+        <Card className="border-amber-200 bg-amber-50">
+          <div className="text-sm font-medium text-amber-700">Total units</div>
+          <div className="mt-2 text-2xl font-bold tabular-nums text-amber-900">{items.reduce((sum, item) => sum + item.currentBalance, 0)}</div>
+          <div className="mt-3 text-xs text-amber-600">All items combined</div>
         </Card>
       </div>
 
       {/* Restock needed */}
-      <Card title="Needs restocking">
+      <Card title="Needs restocking" className="border-amber-200 bg-amber-50">
         {items.length === 0 ? (
           <Empty>No items at this location yet.</Empty>
         ) : restock.length === 0 ? (
           <Empty>Everything is above its minimum level.</Empty>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-amber-100">
             {restock.map((item) => {
               const pct = Math.min(100, Math.round((item.currentBalance / (item.minThreshold || 1)) * 100));
               const empty = item.currentBalance === 0;
               return (
                 <li key={item.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-slate-800">{item.name}</div>
-                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+                    <div className="truncate text-sm font-semibold text-amber-900">{item.name}</div>
+                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-amber-200">
                       <div
-                        className={`h-1.5 rounded-full ${empty ? 'bg-rose-500' : 'bg-amber-500'}`}
+                        className={`h-1.5 rounded-full ${empty ? 'bg-rose-500' : 'bg-amber-600'}`}
                         style={{ width: `${Math.max(pct, 4)}%` }}
                       />
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div className="mt-1 text-xs text-amber-700">
                       {empty ? 'Out of stock' : `${item.currentBalance} left`}, minimum {item.minThreshold}
                     </div>
                   </div>
                   <button
                     onClick={() => openReceive(item.id)}
-                    className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
                   >
                     Receive
                   </button>
@@ -236,21 +263,21 @@ export const LocationViewScreen: React.FC = () => {
       </Card>
 
       {/* Inventory */}
-      <Card title="Inventory at this location">
+      <Card title="Inventory at this location" className="border-amber-200 bg-amber-50">
         {items.length === 0 ? (
           <Empty>No items at this location yet.</Empty>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-amber-100">
             {items.map((item) => (
               <li key={item.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-slate-800">{item.name}</div>
-                  <div className="mt-1 text-xs text-slate-500">{item.presentation} · SKU {item.sku}</div>
-                  <div className="mt-1 text-xs text-slate-500">{item.currentBalance} {item.unit}</div>
+                  <div className="truncate text-sm font-semibold text-amber-900">{item.name}</div>
+                  <div className="mt-1 text-xs text-amber-700">{item.presentation} · SKU {item.sku}</div>
+                  <div className="mt-1 text-xs text-amber-700">{item.currentBalance} {item.unit}</div>
                 </div>
                 <button
                   onClick={() => openReceive(item.id)}
-                  className="shrink-0 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
                 >
                   Receive
                 </button>
@@ -261,7 +288,7 @@ export const LocationViewScreen: React.FC = () => {
       </Card>
 
       {/* Categories */}
-      <Card title="Medicine categories">
+      <Card title="Medicine categories" className="border-amber-200 bg-amber-50">
         {categories.length === 0 ? (
           <Empty>Add medicines to see your categories.</Empty>
         ) : (
@@ -274,11 +301,11 @@ export const LocationViewScreen: React.FC = () => {
             <ul className="space-y-3">
               {categories.map((c) => (
                 <li key={c.name} className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2.5 font-medium text-slate-700">
+                  <span className="flex items-center gap-2.5 font-medium text-amber-900">
                     <span className={`h-2.5 w-2.5 rounded-full ${c.bar}`} />
                     {c.name}
                   </span>
-                  <span className="tabular-nums text-slate-600">{c.count} items</span>
+                  <span className="tabular-nums text-amber-700">{c.count} items</span>
                 </li>
               ))}
             </ul>
