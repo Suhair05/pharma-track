@@ -10,6 +10,7 @@ import deploymentHandler from '../api/dispatch';
 
 const pharmacies = [
   { id: 'pharmacy-a', owner_id: 'user-a', name: 'A Pharmacy', manager_name: 'Manager A', inventory_size: 'small', stock_categories: ['over_the_counter'] },
+  { id: 'pharmacy-c', owner_id: 'user-a', name: 'C Pharmacy', manager_name: 'Manager A', inventory_size: 'medium', stock_categories: ['medical_supplies'] },
   { id: 'pharmacy-b', owner_id: 'user-b', name: 'B Pharmacy', manager_name: 'Manager B', inventory_size: 'large', stock_categories: ['prescription_medicines'] },
 ];
 const staff = [
@@ -86,6 +87,23 @@ function mockSupabase() {
       eq(column: string, value: unknown) {
         this.filters[column] = value;
         return this;
+      },
+      in(column: string, values: unknown[]) {
+        this.filters[column] = values;
+        return this;
+      },
+      then(onFulfilled?: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) {
+        const matches = (row: Record<string, unknown>) => Object.entries(this.filters).every(([key, value]) =>
+          Array.isArray(value)
+            ? value.includes(row[key])
+            : row[key] === value,
+        );
+        const rows = table === 'pharmacies'
+          ? pharmacies.filter(matches)
+          : table === 'pharmacy_staff'
+            ? staff.filter(matches)
+            : [];
+        return Promise.resolve({ data: rows, error: null }).then(onFulfilled, onRejected);
       },
       async maybeSingle() {
         if (table === 'formulary_items' && this.deleting) {
@@ -195,6 +213,31 @@ test('session check returns an unauthenticated result without a browser error wh
   const response = await fetch(`${baseUrl}/api/auth/session`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { authenticated: false });
+});
+
+test('users can switch between their own pharmacies but cannot select another owner’s pharmacy', async () => {
+  const login = await fetch(`${baseUrl}/api/auth/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken: 'valid-token-a' }),
+  });
+  const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
+
+  const list = await fetch(`${baseUrl}/api/pharmacies`, { headers: { Cookie: cookie } });
+  assert.equal(list.status, 200);
+  const result = await list.json() as { pharmacies: { id: string; name: string }[] };
+  assert.deepEqual(result.pharmacies.map(({ id }) => id), ['pharmacy-a', 'pharmacy-c']);
+
+  const selected = await fetch(`${baseUrl}/api/pharmacy`, {
+    headers: { Cookie: cookie, 'X-Pharmacy-Id': 'pharmacy-c' },
+  });
+  assert.equal(selected.status, 200);
+  assert.equal((await selected.json() as { profile: { name: string } }).profile.name, 'C Pharmacy');
+
+  const unauthorized = await fetch(`${baseUrl}/api/pharmacy`, {
+    headers: { Cookie: cookie, 'X-Pharmacy-Id': 'pharmacy-b' },
+  });
+  assert.equal(unauthorized.status, 403);
 });
 
 test('login rejects an invalid Supabase access token', async () => {

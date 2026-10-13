@@ -64,13 +64,15 @@ set email = excluded.email,
 
 create table if not exists public.pharmacies (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null unique references auth.users(id) on delete cascade,
+  owner_id uuid not null references auth.users(id) on delete cascade,
   name text not null,
   manager_name text not null,
   inventory_size text not null check (inventory_size in ('small', 'medium', 'large')),
   stock_categories text[] not null default '{}',
   created_at timestamptz not null default now()
 );
+
+alter table public.pharmacies drop constraint if exists pharmacies_owner_id_key;
 
 alter table public.pharmacies enable row level security;
 drop policy if exists "owner reads own pharmacy" on public.pharmacies;

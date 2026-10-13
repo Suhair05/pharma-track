@@ -23,9 +23,12 @@ export type NewProfile = Omit<PharmacyProfile, 'id'>;
 
 interface ProfileContextValue {
   profile: PharmacyProfile | null;
+  pharmacies: PharmacyProfile[];
   loading: boolean;
   error: string;
   saveProfile: (input: NewProfile) => Promise<void>;
+  createPharmacy: (input: NewProfile) => Promise<void>;
+  selectPharmacy: (pharmacyId: string) => Promise<void>;
   reload: () => void;
 }
 
@@ -39,6 +42,7 @@ export const useProfile = () => {
 
 export const ProfileProvider: React.FC<{ userId: string; children: React.ReactNode }> = ({ userId, children }) => {
   const [profile, setProfile] = useState<PharmacyProfile | null>(null);
+  const [pharmacies, setPharmacies] = useState<PharmacyProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -46,8 +50,18 @@ export const ProfileProvider: React.FC<{ userId: string; children: React.ReactNo
     setLoading(true);
     setError('');
     try {
-      const { profile: data } = await apiGet<{ profile: PharmacyProfile | null }>('/api/pharmacy');
-      setProfile(data);
+      const { pharmacies: data } = await apiGet<{ pharmacies: PharmacyProfile[] }>('/api/pharmacies');
+      setPharmacies(data);
+      if (data.length === 0) {
+        window.localStorage.removeItem('pharmatrack_pharmacy_id');
+        setProfile(null);
+      } else {
+        const savedId = window.localStorage.getItem('pharmatrack_pharmacy_id');
+        const selected = data.find((pharmacy) => pharmacy.id === savedId) ?? data[0];
+        window.localStorage.setItem('pharmatrack_pharmacy_id', selected.id);
+        const { profile: selectedProfile } = await apiGet<{ profile: PharmacyProfile }>('/api/pharmacy');
+        setProfile(selectedProfile);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'We could not load your pharmacy. Check your connection and try again.');
     } finally {
@@ -61,11 +75,51 @@ export const ProfileProvider: React.FC<{ userId: string; children: React.ReactNo
 
   const saveProfile = async (input: NewProfile) => {
     const { profile: data } = await apiPost<{ profile: PharmacyProfile }>('/api/pharmacy', input);
-    setProfile({ ...data, role: data.role ?? 'admin' });
+    const newProfile = { ...data, role: data.role ?? 'admin' };
+    window.localStorage.setItem('pharmatrack_pharmacy_id', newProfile.id);
+    setPharmacies((current) => [...current.filter((pharmacy) => pharmacy.id !== newProfile.id), newProfile]);
+    setProfile(newProfile);
+  };
+
+  const createPharmacy = async (input: NewProfile) => {
+    const { profile: data } = await apiPost<{ profile: PharmacyProfile }>('/api/pharmacy', input);
+    const newProfile = { ...data, role: data.role ?? 'admin' };
+    window.localStorage.setItem('pharmatrack_pharmacy_id', newProfile.id);
+    setPharmacies((current) => [...current.filter((pharmacy) => pharmacy.id !== newProfile.id), newProfile]);
+    setProfile(newProfile);
+  };
+
+  const selectPharmacy = async (pharmacyId: string) => {
+    const selected = pharmacies.find((pharmacy) => pharmacy.id === pharmacyId);
+    if (!selected) throw new Error('That pharmacy is not available to your account.');
+    const previousId = window.localStorage.getItem('pharmatrack_pharmacy_id');
+    window.localStorage.setItem('pharmatrack_pharmacy_id', selected.id);
+    setLoading(true);
+    setError('');
+    try {
+      const { profile: selectedProfile } = await apiGet<{ profile: PharmacyProfile }>('/api/pharmacy');
+      setProfile(selectedProfile);
+    } catch (cause) {
+      if (previousId) window.localStorage.setItem('pharmatrack_pharmacy_id', previousId);
+      else window.localStorage.removeItem('pharmatrack_pharmacy_id');
+      setError(cause instanceof Error ? cause.message : 'We could not open that pharmacy. Please try again.');
+      throw cause;
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, error, saveProfile, reload: load }}>
+    <ProfileContext.Provider value={{
+      profile,
+      pharmacies,
+      loading,
+      error,
+      saveProfile,
+      createPharmacy,
+      selectPharmacy,
+      reload: load,
+    }}>
       {children}
     </ProfileContext.Provider>
   );

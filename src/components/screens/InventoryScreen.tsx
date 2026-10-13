@@ -181,7 +181,7 @@ export const InventoryScreen: React.FC = () => {
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#197882] hover:bg-[#15666f] rounded-lg transition-colors shadow-xs cursor-pointer ml-auto md:ml-0"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-brand-60 hover:bg-[#15666f] rounded-lg transition-colors shadow-xs cursor-pointer ml-auto md:ml-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add new item</span>
@@ -316,7 +316,7 @@ export const InventoryScreen: React.FC = () => {
         <EditInventoryItemModal item={itemToEdit} onClose={() => setItemToEdit(null)} />
       )}
       {itemToDelete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-60 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm">
           <section role="alertdialog" aria-modal="true" aria-labelledby="delete-item-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-rose-200 bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-rose-700 px-6 py-4 text-white">
               <div className="flex items-center gap-3">

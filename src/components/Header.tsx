@@ -4,6 +4,7 @@ import { usePharmacy } from '../context/PharmacyContext';
 import { useProfile } from '../context/ProfileContext';
 import { supabase } from '../lib/supabaseClient';
 import { apiRequest } from '../services/api';
+import { OnboardingScreen } from './screens/OnboardingScreen';
 
 interface HeaderProps {
   mobileMenuOpen: boolean;
@@ -22,13 +23,16 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, onOutside: ()
 
 export const Header: React.FC<HeaderProps> = ({ mobileMenuOpen, onMenuClick }) => {
   const { items, setSelectedItemId, setActiveScreen, setIsSchemaModalOpen } = usePharmacy();
-  const { profile } = useProfile();
+  const { profile, pharmacies, selectPharmacy, createPharmacy } = useProfile();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [pharmacyOpen, setPharmacyOpen] = useState(false);
+  const [addingPharmacy, setAddingPharmacy] = useState(false);
   const [signOutError, setSignOutError] = useState('');
 
   const searchRef = useRef<HTMLDivElement>(null);
+  const pharmacyRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -45,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({ mobileMenuOpen, onMenuClick }) =
   };
 
   useClickOutside(searchRef, () => setSearchOpen(false));
+  useClickOutside(pharmacyRef, () => setPharmacyOpen(false));
   useClickOutside(userRef, () => setUserOpen(false));
 
   // Ctrl/Cmd + K focuses search
@@ -162,9 +167,62 @@ export const Header: React.FC<HeaderProps> = ({ mobileMenuOpen, onMenuClick }) =
 
       {/* Pharmacy + user */}
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <div className="hidden h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 md:flex">
-          <Building2 className="h-4 w-4 text-brand-600" />
-          <span className="max-w-50 truncate">{profile?.name}</span>
+        <div className="relative" ref={pharmacyRef}>
+          <button
+            type="button"
+            onClick={() => setPharmacyOpen((open) => !open)}
+            aria-expanded={pharmacyOpen}
+            aria-label={`Select pharmacy. Current pharmacy: ${profile?.name ?? ''}`}
+            className="flex h-10 max-w-40 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:max-w-56 sm:px-3"
+          >
+            <Building2 aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-600" />
+            <span className="truncate">{profile?.name}</span>
+            <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
+          </button>
+          {pharmacyOpen && (
+            <div className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+              <p className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Your pharmacies
+              </p>
+              <div className="max-h-64 overflow-y-auto">
+                {pharmacies.map((pharmacy) => (
+                  <button
+                    key={pharmacy.id}
+                    type="button"
+                    onClick={() => {
+                      setPharmacyOpen(false);
+                      if (pharmacy.id !== profile?.id) {
+                        void selectPharmacy(pharmacy.id).catch(() => undefined);
+                      }
+                    }}
+                    aria-current={pharmacy.id === profile?.id ? 'true' : undefined}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm ${
+                      pharmacy.id === profile?.id
+                        ? 'bg-brand-50 font-semibold text-brand-700'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Building2 aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-600" />
+                    <span className="min-w-0 flex-1 truncate">{pharmacy.name}</span>
+                    <span className="text-[10px] capitalize text-slate-400">{pharmacy.role ?? 'staff'}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1 border-t border-slate-100 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPharmacyOpen(false);
+                    setAddingPharmacy(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-brand-700 hover:bg-brand-50"
+                >
+                  <Building2 aria-hidden="true" className="h-4 w-4" />
+                  Add a pharmacy
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="relative" ref={userRef}>
@@ -213,8 +271,28 @@ export const Header: React.FC<HeaderProps> = ({ mobileMenuOpen, onMenuClick }) =
         </div>
       </div>
     </header>
+    {addingPharmacy && (
+      <div className="fixed inset-0 z-65 overflow-y-auto bg-slate-900/60 p-3 backdrop-blur-sm sm:p-6">
+        <div className="relative mx-auto max-w-lg">
+          <button
+            type="button"
+            onClick={() => setAddingPharmacy(false)}
+            aria-label="Cancel adding a pharmacy"
+            className="absolute right-3 top-3 z-10 rounded-lg bg-white/90 p-2 text-slate-500 shadow-sm hover:bg-white hover:text-slate-800"
+          >
+            <X aria-hidden="true" className="h-5 w-5" />
+          </button>
+          <OnboardingScreen
+            onSubmit={async (input) => {
+              await createPharmacy(input);
+              setAddingPharmacy(false);
+            }}
+          />
+        </div>
+      </div>
+    )}
     {signOutError && (
-      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="fixed inset-0 z-70 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
         <section role="alertdialog" aria-modal="true" aria-labelledby="signout-error-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-rose-200 bg-white shadow-2xl">
           <header className="flex items-center justify-between bg-slate-900 px-6 py-4 text-white">
             <div className="flex items-center gap-3">

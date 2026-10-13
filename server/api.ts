@@ -175,11 +175,32 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
       return;
     }
     res.locals.userId = payload.sub;
+    const requestedPharmacyId = req.get('x-pharmacy-id')?.trim();
+    if (requestedPharmacyId) res.locals.requestedPharmacyId = requestedPharmacyId;
     next();
   };
 
-  async function pharmacyForUser(userId: string) {
+  async function pharmacyForUser(userId: string, requestedPharmacyId?: string) {
     if (!supabase) throw new Error('Database is not configured.');
+    if (requestedPharmacyId) {
+      const requested = await supabase
+        .from('pharmacies')
+        .select(profileColumns)
+        .eq('id', requestedPharmacyId)
+        .maybeSingle();
+      if (requested.error || !requested.data) return requested;
+      if (requested.data.owner_id === userId) return requested;
+      const membership = await supabase
+        .from('pharmacy_staff')
+        .select('pharmacy_id')
+        .eq('pharmacy_id', requestedPharmacyId)
+        .eq('user_id', userId)
+        .eq('active', true)
+        .maybeSingle();
+      if (membership.error || !membership.data) return { data: null, error: membership.error };
+      return requested;
+    }
+
     const owned = await supabase.from('pharmacies').select(profileColumns).eq('owner_id', userId).maybeSingle();
     if (owned.error || owned.data) return owned;
     const membership = await supabase
@@ -193,14 +214,19 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
   }
 
   async function requirePharmacy(userId: string, res: Response) {
-    const { data, error } = await pharmacyForUser(userId);
+    const requestedPharmacyId = res.locals.requestedPharmacyId as string | undefined;
+    const { data, error } = await pharmacyForUser(userId, requestedPharmacyId);
     if (error) {
       logPharmacyLookupFailure(error);
       res.status(500).json({ error: 'We could not load your pharmacy profile.' });
       return null;
     }
     if (!data) {
-      res.status(409).json({ error: 'Complete pharmacy setup before using inventory.' });
+      res.status(requestedPharmacyId ? 403 : 409).json({
+        error: requestedPharmacyId
+          ? 'You do not have access to the selected pharmacy.'
+          : 'Complete pharmacy setup before using inventory.',
+      });
       return null;
     }
     return data;
@@ -237,6 +263,55 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
   };
 
   app.get('/api/health', (_req, res) => res.json({ status: 'online', app: 'Axelle MD' }));
+
+  app.get('/api/pharmacies', requireConfiguration, authenticate, async (_req, res, next) => {
+    try {
+      const userId = res.locals.userId as string;
+      const owned = await supabase!
+        .from('pharmacies')
+        .select(profileColumns)
+        .eq('owner_id', userId);
+      if (owned.error) {
+        logPharmacyLookupFailure(owned.error);
+        res.status(500).json({ error: 'We could not load your pharmacies.' });
+        return;
+      }
+
+      const memberships = await supabase!
+        .from('pharmacy_staff')
+        .select('pharmacy_id, role')
+        .eq('user_id', userId)
+        .eq('active', true);
+      if (memberships.error) {
+        console.error('Pharmacy memberships lookup failed:', memberships.error.message);
+        res.status(500).json({ error: 'We could not load your pharmacy memberships.' });
+        return;
+      }
+
+      const ownedProfiles = owned.data ?? [];
+      const ownedIds = new Set(ownedProfiles.map((pharmacy) => pharmacy.id));
+      const memberPharmacyIds = (memberships.data ?? [])
+        .filter((membership) => !ownedIds.has(membership.pharmacy_id))
+        .map((membership) => membership.pharmacy_id);
+      const memberProfiles = memberPharmacyIds.length > 0
+        ? await supabase!.from('pharmacies').select(profileColumns).in('id', memberPharmacyIds)
+        : { data: [], error: null };
+      if (memberProfiles.error) {
+        logPharmacyLookupFailure(memberProfiles.error);
+        res.status(500).json({ error: 'We could not load your pharmacy memberships.' });
+        return;
+      }
+
+      const roles = new Map((memberships.data ?? []).map((membership) => [membership.pharmacy_id, membership.role]));
+      const pharmacies = [
+        ...ownedProfiles.map((pharmacy) => ({ ...pharmacy, role: 'admin' })),
+        ...(memberProfiles.data ?? []).map((pharmacy) => ({ ...pharmacy, role: roles.get(pharmacy.id) })),
+      ];
+      res.json({ pharmacies });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   app.post('/api/auth/password-reset', requireConfiguration, async (req, res, next) => {
     try {
@@ -408,13 +483,20 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
 
   app.get('/api/pharmacy', requireConfiguration, authenticate, async (_req, res, next) => {
     try {
-      const { data, error } = await pharmacyForUser(res.locals.userId as string);
+      const { data, error } = await pharmacyForUser(
+        res.locals.userId as string,
+        res.locals.requestedPharmacyId as string | undefined,
+      );
       if (error) {
         logPharmacyLookupFailure(error);
         res.status(500).json({ error: 'We could not load your pharmacy profile.' });
         return;
       }
       if (!data) {
+        if (res.locals.requestedPharmacyId) {
+          res.status(403).json({ error: 'You do not have access to the selected pharmacy.' });
+          return;
+        }
         res.json({ profile: null });
         return;
       }

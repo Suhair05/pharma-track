@@ -10,6 +10,10 @@ export class ApiError extends Error {
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
+  const selectedPharmacyId = window.localStorage.getItem('pharmatrack_pharmacy_id');
+  if (selectedPharmacyId && !headers.has('X-Pharmacy-Id')) {
+    headers.set('X-Pharmacy-Id', selectedPharmacyId);
+  }
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   let response: Response;
   try {
