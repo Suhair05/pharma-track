@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PharmacyProvider, usePharmacy } from './context/PharmacyContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -28,6 +28,13 @@ const MANAGEMENT_TAB_BY_SCREEN: Partial<Record<ActiveScreen, HubTab>> = {
 const MainLayout: React.FC = () => {
   const { activeScreen, notification, clearNotification } = usePharmacy();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!notification || notification.type === 'error') return;
+
+    const timeout = window.setTimeout(clearNotification, 2000);
+    return () => window.clearTimeout(timeout);
+  }, [notification, clearNotification]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC]">

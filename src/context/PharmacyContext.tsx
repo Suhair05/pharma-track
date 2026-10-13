@@ -138,7 +138,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     () => items.find((item) => item.id === selectedItemId) ?? items[0],
     [items, selectedItemId],
   );
-  const clearNotification = () => setNotification(null);
+  const clearNotification = useCallback(() => setNotification(null), []);
 
   const refreshLedgerSync = () => {
     void reloadInventory()
