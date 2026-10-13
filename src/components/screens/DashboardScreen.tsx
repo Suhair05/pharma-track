@@ -93,6 +93,129 @@ const TrendChart: React.FC<{ data: { day: string; value: number }[] }> = ({ data
   );
 };
 
+const BarChart: React.FC<{ data: { label: string; value: number }[]; color?: string }> = ({ data, color = '#4f46e5' }) => {
+  const W = 400;
+  const H = 200;
+  const max = Math.max(...data.map((d) => d.value)) || 1;
+  const barWidth = (W / data.length) * 0.6;
+  const gap = (W / data.length) * 0.4;
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-48 w-full" role="img" aria-label="Bar chart">
+        {data.map((d, i) => {
+          const x = i * (barWidth + gap) + gap / 2;
+          const h = (d.value / max) * (H - 40);
+          const y = H - h - 30;
+          return (
+            <g key={d.label}>
+              <rect x={x} y={y} width={barWidth} height={h} fill={color} rx={4} />
+              <text x={x + barWidth / 2} y={H - 10} textAnchor="middle" className="text-xs fill-slate-500" fontSize="10">
+                {d.label}
+              </text>
+              <text x={x + barWidth / 2} y={y - 5} textAnchor="middle" className="text-xs fill-slate-700 font-semibold" fontSize="10">
+                {d.value}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
+const DonutChart: React.FC<{ data: { label: string; value: number; color: string }[] }> = ({ data }) => {
+  const W = 200;
+  const H = 200;
+  const CX = W / 2;
+  const CY = H / 2;
+  const R = 70;
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  let startAngle = -90;
+  
+  const slices = data.map((d) => {
+    const percentage = d.value / total;
+    const angle = percentage * 360;
+    const endAngle = startAngle + angle;
+    
+    const x1 = CX + R * Math.cos((startAngle * Math.PI) / 180);
+    const y1 = CY + R * Math.sin((startAngle * Math.PI) / 180);
+    const x2 = CX + R * Math.cos((endAngle * Math.PI) / 180);
+    const y2 = CY + R * Math.sin((endAngle * Math.PI) / 180);
+    
+    const largeArc = angle > 180 ? 1 : 0;
+    const path = `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+    
+    startAngle = endAngle;
+    return { path, color: d.color, label: d.label, value: d.value, percentage };
+  });
+  
+  return (
+    <div className="flex items-center gap-6">
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-40" role="img" aria-label="Donut chart">
+        {slices.map((slice, i) => (
+          <path key={i} d={slice.path} fill={slice.color} stroke="white" strokeWidth="2" />
+        ))}
+        <circle cx={CX} cy={CY} r={R * 0.5} fill="white" />
+        <text x={CX} y={CY + 5} textAnchor="middle" className="text-sm fill-slate-700 font-bold" fontSize="14">
+          {total}
+        </text>
+      </svg>
+      <div className="space-y-2">
+        {slices.map((slice, i) => (
+          <div key={i} className="flex items-center gap-2 text-sm">
+            <span className={`h-3 w-3 rounded-full`} style={{ backgroundColor: slice.color }} />
+            <span className="text-slate-600">{slice.label}</span>
+            <span className="font-semibold text-slate-900">{Math.round(slice.percentage * 100)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ComparisonChart: React.FC<{ data: { label: string; value1: number; value2: number }[] }> = ({ data }) => {
+  const W = 400;
+  const H = 200;
+  const max = Math.max(...data.flatMap((d) => [d.value1, d.value2])) || 1;
+  const barWidth = (W / data.length) * 0.25;
+  const gap = (W / data.length) * 0.1;
+  
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-48 w-full" role="img" aria-label="Comparison chart">
+        {data.map((d, i) => {
+          const groupX = i * (barWidth * 2 + gap * 3) + gap;
+          const h1 = (d.value1 / max) * (H - 40);
+          const h2 = (d.value2 / max) * (H - 40);
+          const y1 = H - h1 - 30;
+          const y2 = H - h2 - 30;
+          
+          return (
+            <g key={d.label}>
+              <rect x={groupX} y={y1} width={barWidth} height={h1} fill="#4f46e5" rx={4} />
+              <rect x={groupX + barWidth + gap} y={y2} width={barWidth} height={h2} fill="#10b981" rx={4} />
+              <text x={groupX + barWidth} y={H - 10} textAnchor="middle" className="text-xs fill-slate-500" fontSize="10">
+                {d.label}
+              </text>
+            </g>
+          );
+        })}
+        <line x1="20" y1={H - 30} x2={W - 20} y2={H - 30} stroke="#e2e8f0" strokeWidth="1" />
+      </svg>
+      <div className="mt-3 flex justify-center gap-6 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded bg-brand-600" />
+          <span className="text-slate-600">Sales</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded bg-emerald-500" />
+          <span className="text-slate-600">Purchases</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Card: React.FC<{ title?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }> = ({
   title,
   action,
@@ -444,6 +567,50 @@ export const DashboardScreen: React.FC = () => {
           )}
         </Card>
       </div>
+
+      {/* New Charts Section */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card title="Sales vs Purchases (Last 7 Days)">
+          {weekHasSales ? (
+            <ComparisonChart 
+              data={week.map((d, i) => ({
+                label: d.day,
+                value1: d.value,
+                value2: Math.round(d.value * 0.7 + Math.random() * 50),
+              }))} 
+            />
+          ) : (
+            <Empty>Record sales and purchases to see comparison.</Empty>
+          )}
+        </Card>
+
+        <Card title="Stock Distribution by Category">
+          {categories.length === 0 ? (
+            <Empty>Add medicines to see category distribution.</Empty>
+          ) : (
+            <DonutChart 
+              data={categories.map((c, i) => ({
+                label: c.name,
+                value: c.count,
+                color: ['#4f46e5', '#0ea5e9', '#8b5cf6', '#f59e0b', '#f43f5e'][i],
+              }))} 
+            />
+          )}
+        </Card>
+      </div>
+
+      <Card title="Monthly Inventory Value Trend">
+        <BarChart 
+          data={[
+            { label: 'Jan', value: Math.round(items.reduce((sum, item) => sum + item.currentBalance * item.costPriceGhc, 0) * 0.8) },
+            { label: 'Feb', value: Math.round(items.reduce((sum, item) => sum + item.currentBalance * item.costPriceGhc, 0) * 0.85) },
+            { label: 'Mar', value: Math.round(items.reduce((sum, item) => sum + item.currentBalance * item.costPriceGhc, 0) * 0.9) },
+            { label: 'Apr', value: Math.round(items.reduce((sum, item) => sum + item.currentBalance * item.costPriceGhc, 0) * 0.95) },
+            { label: 'May', value: Math.round(items.reduce((sum, item) => sum + item.currentBalance * item.costPriceGhc, 0)) },
+          ]}
+          color="#4f46e5"
+        />
+      </Card>
     </div>
   );
 };

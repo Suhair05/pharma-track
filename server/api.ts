@@ -579,11 +579,13 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
     }
   });
 
-  app.get('/api/inventory', requireConfiguration, authenticate, async (_req, res, next) => {
+  app.get('/api/inventory', requireConfiguration, authenticate, async (req, res, next) => {
     try {
       const profile = await requirePharmacy(res.locals.userId as string, res);
       if (!profile) return;
       const pharmacyId = profile.id;
+      const locationId = typeof req.query.locationId === 'string' ? req.query.locationId : undefined;
+      
       const [itemsResult, batchesResult, ledgerResult] = await Promise.all([
         supabase!.from('formulary_items').select('*').eq('pharmacy_id', pharmacyId).order('created_at', { ascending: false }),
         supabase!.from('batches').select('*').eq('pharmacy_id', pharmacyId).order('expiry_date'),
@@ -597,8 +599,8 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
       }
       const batches = batchesResult.data ?? [];
       const items = (itemsResult.data ?? []).map((item) => {
-        const itemBatches = batches.filter((batch) => batch.item_id === item.id);
-        const currentBalance = Number(item.current_balance);
+        const itemBatches = batches.filter((batch) => batch.item_id === item.id && (!locationId || batch.location_id === locationId));
+        const currentBalance = itemBatches.reduce((sum, batch) => sum + batch.current_quantity, 0);
         const minThreshold = Number(item.min_threshold);
         const earliestBatch = itemBatches
           .filter((batch) => batch.current_quantity > 0)
@@ -636,7 +638,7 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
           isRecalled: Boolean(batch.is_recalled),
           })),
         };
-      });
+      }).filter((item) => item.batches.length > 0 || !locationId);
       const ledger = (ledgerResult.data ?? []).map((entry) => ({
         id: entry.id,
         itemId: entry.item_id,
@@ -1377,6 +1379,75 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
         return;
       }
       res.json({ success: true, message: 'Stock transferred and ledger updated.' });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/management/transfers', requireConfiguration, authenticate, requireRoles('admin', 'pharmacist', 'inventory_clerk'), async (req, res, next) => {
+    try {
+      const profile = await requirePharmacy(res.locals.userId as string, res);
+      if (!profile) return;
+      const { data: ledger, error: ledgerError } = await supabase!
+        .from('stock_ledger')
+        .select(`
+          id,
+          type,
+          item_id,
+          supplier_or_customer,
+          qty_in,
+          qty_out,
+          balance_after,
+          created_at,
+          items!inner(name),
+          batches!inner(batch_no, location_id),
+          locations!inner(name)
+        `)
+        .eq('pharmacy_id', profile.id)
+        .eq('type', 'Transfer')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (ledgerError) {
+        console.error('Transfer loading failed:', ledgerError.message);
+        res.status(500).json({ error: 'We could not load transfer records.' });
+        return;
+      }
+      const transfers = (ledger ?? []).map((entry: any) => ({
+        id: entry.id,
+        item_name: entry.items.name,
+        batch_no: entry.batches.batch_no,
+        source_location: entry.locations?.name || 'Unknown',
+        destination_location: entry.supplier_or_customer,
+        quantity: entry.qty_out || 0,
+        status: 'completed',
+        created_at: entry.created_at,
+      }));
+      res.json({ transfers });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.patch('/api/management/transfers/:transferId', requireConfiguration, authenticate, requireRoles('admin', 'pharmacist', 'inventory_clerk'), async (req, res, next) => {
+    try {
+      const profile = await requirePharmacy(res.locals.userId as string, res);
+      if (!profile) return;
+      const { status } = isRecord(req.body) ? req.body : {};
+      if (status !== 'completed') {
+        res.status(400).json({ error: 'Only "completed" status is supported.' });
+        return;
+      }
+      const { error } = await supabase!
+        .from('stock_ledger')
+        .update({ notes: `Marked completed by ${profile.manager_name}` })
+        .eq('id', req.params.transferId)
+        .eq('pharmacy_id', profile.id);
+      if (error) {
+        console.error('Transfer update failed:', error.message);
+        res.status(500).json({ error: 'We could not update the transfer status.' });
+        return;
+      }
+      res.json({ success: true, message: 'Transfer status updated.' });
     } catch (error) {
       next(error);
     }

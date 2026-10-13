@@ -51,6 +51,8 @@ interface PharmacyContextType {
   selectedItemId: string;
   setSelectedItemId: (id: string) => void;
   selectedItem: FormularyItem | undefined;
+  selectedLocationId: string | null;
+  setSelectedLocationId: (id: string | null) => void;
   receiveStock: (params: ReceiveStockParams) => Promise<{ success: boolean; message: string }>;
   dispenseStock: (params: DispenseStockParams) => Promise<{ success: boolean; message: string }>;
   adjustStock: (params: AdjustStockParams) => Promise<void>;
@@ -88,25 +90,29 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [marketBenchmarks, setMarketBenchmarks] = useState<Record<string, MarketBenchmark>>({});
   const [activeScreen, setActiveScreen] = useState<ActiveScreen>('dashboard');
   const [selectedItemId, setSelectedItemId] = useState('');
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
   const [syncTimestamp, setSyncTimestamp] = useState('');
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [notification, setNotification] = useState<PharmacyContextType['notification']>(null);
 
   const reloadInventory = useCallback(async () => {
-    const data = await apiGet<{ items: FormularyItem[]; ledger: LedgerTransaction[] }>('/api/inventory');
+    const data = await apiGet<{ items: FormularyItem[]; ledger: LedgerTransaction[] }>(
+      selectedLocationId ? `/api/inventory?locationId=${selectedLocationId}` : '/api/inventory'
+    );
     setItems(data.items);
     setLedger(data.ledger);
     setIsSupabaseConnected(true);
     setSyncTimestamp(new Date().toLocaleString());
     setSelectedItemId((current) => data.items.some((item) => item.id === current) ? current : data.items[0]?.id || '');
-  }, []);
+  }, [selectedLocationId]);
 
   useEffect(() => {
     let mounted = true;
     if (!profile) return;
+    const inventoryEndpoint = selectedLocationId ? `/api/inventory?locationId=${selectedLocationId}` : '/api/inventory';
     void Promise.all([
-      apiGet<{ items: FormularyItem[]; ledger: LedgerTransaction[] }>('/api/inventory'),
+      apiGet<{ items: FormularyItem[]; ledger: LedgerTransaction[] }>(inventoryEndpoint),
       apiGet<Record<string, unknown>[]>('/api/market-prices'),
     ])
       .then(([inventory, rows]) => {
@@ -132,7 +138,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       mounted = false;
     };
-  }, [profile]);
+  }, [profile, selectedLocationId]);
 
   const selectedItem = useMemo(
     () => items.find((item) => item.id === selectedItemId) ?? items[0],
@@ -265,6 +271,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         selectedItemId,
         setSelectedItemId,
         selectedItem,
+        selectedLocationId,
+        setSelectedLocationId,
         receiveStock,
         dispenseStock,
         adjustStock,

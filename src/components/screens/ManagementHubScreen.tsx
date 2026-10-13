@@ -76,7 +76,7 @@ const PAGE_TITLES: Record<HubTab, string> = {
 };
 
 export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initialTab = 'insights' }) => {
-  const { setActiveScreen, setSelectedItemId, reloadInventory } = usePharmacy();
+  const { setActiveScreen, setSelectedItemId, reloadInventory, setSelectedLocationId } = usePharmacy();
   const { profile } = useProfile();
   const [tab, setTab] = useState<HubTab>(initialTab);
   const [data, setData] = useState<ManagementData>(emptyData);
@@ -494,7 +494,10 @@ export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initial
                 <Panel title="Stores and storage locations">
                   {data.locations.length ? <ul className="divide-y divide-slate-100">{data.locations.map((location) => {
                     const qty = data.batches.filter((batch) => batch.location_id === location.id).reduce((sum, batch) => sum + batch.current_quantity, 0);
-                    return <li key={location.id} className="flex justify-between gap-3 py-3 text-sm"><span><strong className="text-slate-800">{location.name}</strong>{location.is_primary && <span className="ml-2 rounded-full bg-brand-50 px-2 py-1 text-xs text-brand-700">Primary</span>}<span className="block text-xs text-slate-500">{location.address || 'No address recorded'}</span></span><span className="text-right font-medium text-slate-600">{qty} units</span></li>;
+                    return <li key={location.id} className="flex justify-between gap-3 py-3 text-sm"><button onClick={() => {
+                      setSelectedLocationId(location.id);
+                      setActiveScreen('location-view');
+                    }} className="text-left flex-1 hover:bg-slate-50 rounded px-2 py-1 -ml-2 transition-colors"><span><strong className="text-slate-800">{location.name}</strong>{location.is_primary && <span className="ml-2 rounded-full bg-brand-50 px-2 py-1 text-xs text-brand-700">Primary</span>}<span className="block text-xs text-slate-500">{location.address || 'No address recorded'}</span></span></button><span className="text-right font-medium text-slate-600">{qty} units</span></li>;
                   })}</ul> : <Empty>No locations have been set up.</Empty>}
                   {profile?.role === 'admin' && <form className="mt-4 space-y-3 border-t border-slate-100 pt-4" onSubmit={(event) => {
                     event.preventDefault(); const form = new FormData(event.currentTarget); const body = Object.fromEntries(form.entries());
@@ -509,27 +512,17 @@ export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initial
               </section>
               <Panel title="Transfer stock between locations">
                 {profile?.role === 'admin' || profile?.role === 'pharmacist' || profile?.role === 'inventory_clerk' ? data.locations.length < 2 ? <Empty>Add at least two locations to transfer stock.</Empty> :
-                  <form className="space-y-3" onSubmit={(event) => {
-                    event.preventDefault(); const form = new FormData(event.currentTarget); const itemId = String(form.get('itemId') ?? ''); const batchId = String(form.get('batchId') ?? '');
-                    const body = { itemId, batchId, destinationLocationId: form.get('destinationLocationId'), quantity: Number(form.get('quantity')) };
-                    void runAction(() => apiPost('/api/management/transfers', body), 'Stock transferred; source and destination balances were updated.');
-                    event.currentTarget.reset();
-                  }}>
-                    <label className="block text-sm font-medium text-slate-700">Medicine and source batch
-                      <select name="batchId" required className={`${controlClass} mt-1`} onChange={(event) => {
-                        const batch = data.batches.find((entry) => entry.id === event.target.value);
-                        const hiddenItem = event.currentTarget.form?.elements.namedItem('itemId') as HTMLInputElement | null;
-                        if (hiddenItem && batch) hiddenItem.value = batch.item_id;
-                      }}>
-                        <option value="">Select available batch</option>{data.batches.filter((batch) => !batch.is_recalled && new Date(batch.expiry_date) > new Date()).map((batch) => <option key={batch.id} value={batch.id}>{data.items.find((item) => item.id === batch.item_id)?.name} · {batch.batch_no} · {data.locations.find((location) => location.id === batch.location_id)?.name ?? 'Unassigned'} · {batch.current_quantity} units</option>)}
-                      </select>
-                    </label>
-                    <input type="hidden" name="itemId" />
-                    <select name="destinationLocationId" required className={controlClass}><option value="">Destination location</option>{data.locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select>
-                    <input name="quantity" type="number" min="1" step="1" required placeholder="Quantity to transfer" className={controlClass} />
-                    <button disabled={busy} className={buttonClass}>Transfer stock</button>
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-600">View and manage pending stock transfers between your pharmacy locations.</p>
+                    <button
+                      disabled={busy}
+                      onClick={() => setActiveScreen('pending-transfers')}
+                      className={buttonClass}
+                    >
+                      View pending transfers
+                    </button>
                     <p className="text-xs text-slate-500">Transfers are recorded in the stock ledger and cannot use expired or recalled batches.</p>
-                  </form> : <Empty>Inventory clerk, pharmacist, or administrator permission is required.</Empty>}
+                  </div> : <Empty>Inventory clerk, pharmacist, or administrator permission is required.</Empty>}
               </Panel>
             </div>
           )}

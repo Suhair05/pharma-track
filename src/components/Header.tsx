@@ -204,7 +204,9 @@ export const Header: React.FC<HeaderProps> = ({ mobileMenuOpen, onMenuClick }) =
                   >
                     <Building2 aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-600" />
                     <span className="min-w-0 flex-1 truncate">{pharmacy.name}</span>
-                    <span className="text-[10px] capitalize text-slate-400">{pharmacy.role ?? 'staff'}</span>
+                    {pharmacy.id === profile?.id && (
+                      <span className="text-[10px] font-medium text-brand-600">Current</span>
+                    )}
                   </button>
                 ))}
               </div>

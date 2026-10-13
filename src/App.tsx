@@ -10,6 +10,8 @@ import { BinCardScreen } from './components/screens/BinCardScreen';
 import { OperationsScreen } from './components/screens/OperationsScreen';
 import { ManagementHubScreen } from './components/screens/ManagementHubScreen';
 import { AboutPoliciesScreen } from './components/screens/AboutPoliciesScreen';
+import { PendingTransfersScreen } from './components/screens/PendingTransfersScreen';
+import { LocationViewScreen } from './components/screens/LocationViewScreen';
 import type { HubTab } from './components/screens/ManagementHubScreen';
 import type { ActiveScreen } from './types/pharmacy';
 import { SupabaseModal } from './components/SupabaseModal';
@@ -87,6 +89,8 @@ const MainLayout: React.FC = () => {
             <ManagementHubScreen initialTab={MANAGEMENT_TAB_BY_SCREEN[activeScreen] ?? 'insights'} />
           )}
           {activeScreen === 'about-policies' && <AboutPoliciesScreen />}
+          {activeScreen === 'pending-transfers' && <PendingTransfersScreen />}
+          {activeScreen === 'location-view' && <LocationViewScreen />}
         </main>
       </div>
 

@@ -81,4 +81,6 @@ export type ActiveScreen =
   | 'management-patients'
   | 'management-locations'
   | 'management-barcode'
-  | 'about-policies';
+  | 'about-policies'
+  | 'pending-transfers'
+  | 'location-view';
