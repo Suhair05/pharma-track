@@ -10,11 +10,13 @@ import {
   Calendar, 
   Check, 
   AlertTriangle,
-  Wallet
+  Wallet,
+  Package,
 } from 'lucide-react';
 import { usePharmacy } from '../../context/PharmacyContext';
 import { AddItemModal } from '../AddItemModal';
 import { EditInventoryItemModal } from '../EditInventoryItemModal';
+import { MedicineImage } from '../MedicineImage';
 import type { FormularyItem } from '../../types/pharmacy';
 
 type FilterTab = 'all' | 'low_stock' | 'expiring_soon' | 'out_of_stock';
@@ -187,145 +189,114 @@ export const InventoryScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Data Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-4 sm:px-6">Item</th>
-                <th className="py-3 px-3 text-center">Balance</th>
-                <th className="py-3 px-3 text-center">Minimum Level</th>
-                <th className="py-3 px-3 text-center">Earliest Expiry</th>
-                <th className="py-3 px-3 text-center">Stock grade</th>
-                <th className="py-3 px-3 text-right">Cost Price (GH₵)</th>
-                <th className="py-3 px-3 text-right">Selling Price (GH₵)</th>
-                <th className="py-3 px-4 sm:px-6 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredItems.map((item) => {
-                const isOutOfStock = item.currentBalance === 0;
-                const isLow = item.currentBalance > 0 && item.currentBalance <= item.minThreshold;
-                const isExpiring = isExpiringSoon(item);
+      {/* Medicine cards */}
+      <div className="space-y-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        {filteredItems.length > 0 ? (
+          <ul className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filteredItems.map((item) => {
+              const isOutOfStock = item.currentBalance === 0;
+              const isLow = item.currentBalance > 0 && item.currentBalance <= item.minThreshold;
+              const isExpiring = isExpiringSoon(item);
+              const statusClass = isOutOfStock
+                ? 'border-rose-200 bg-rose-50 text-rose-700'
+                : isLow
+                  ? 'border-amber-200 bg-amber-50 text-amber-800'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-800';
 
-                // Color accent bar on left edge
-                const borderIndicator = isOutOfStock 
-                  ? 'border-l-4 border-l-rose-600' 
-                  : isLow 
-                    ? 'border-l-4 border-l-amber-500' 
-                    : isExpiring 
-                      ? 'border-l-4 border-l-orange-500' 
-                      : 'border-l-4 border-l-emerald-500';
-
-                return (
-                  <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors ${borderIndicator}`}>
-                    <td className="py-3 px-4 sm:px-6">
-                      <div className="font-bold text-slate-900 leading-tight">
-                        {item.name.replace(/ tablets| capsules| dispersible tablets/i, '')}
+              return (
+                <li key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+                  <MedicineImage
+                    name={item.name}
+                    category={item.category}
+                    presentation={item.presentation}
+                    className="h-40 w-full"
+                  />
+                  <div className="space-y-4 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h2 className="font-bold leading-snug text-slate-900">{item.name}</h2>
+                        <p className="mt-1 text-xs text-slate-500">{item.category} · {item.presentation}</p>
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        {item.name.includes('500mg') ? '500mg tablets' : 
-                         item.name.includes('250mg') ? '250mg capsules' :
-                         item.name.includes('400mg') ? '400mg tablets' :
-                         item.name.includes('20mg') ? '20mg capsules' :
-                         item.name.includes('10mg') ? '10mg tablets' :
-                         item.name.includes('5mg') ? '5mg tablets' : ''} • {item.presentation}
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-3 text-center">
-                      <span className={`font-mono font-bold tabular-nums text-xs ${
-                        isOutOfStock ? 'text-rose-600' :
-                        isLow ? 'text-amber-700' : 'text-emerald-700'
-                      }`}>
-                        {item.currentBalance} {item.unit}
+                      <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold ${statusClass}`}>
+                        {isOutOfStock || isLow
+                          ? <AlertTriangle aria-hidden="true" className="h-3 w-3" />
+                          : <Check aria-hidden="true" className="h-3 w-3" />}
+                        {isOutOfStock ? 'Out of stock' : isLow ? 'Low stock' : 'In stock'}
                       </span>
-                    </td>
+                    </div>
 
-                    <td className="py-3 px-3 text-center font-mono tabular-nums text-slate-600 text-xs">
-                      {item.minThreshold} {item.unit}
-                    </td>
-
-                    <td className="py-3 px-3 text-center font-mono text-xs">
-                      {item.earliestExpiry === 'None' ? (
-                        <span className="text-slate-400">None</span>
-                      ) : (
-                        <span className={isExpiring ? 'text-rose-600 font-bold' : 'text-slate-600'}>
-                          {item.earliestExpiry}
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-3 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        {isOutOfStock ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-semibold">
-                            <AlertTriangle className="w-3 h-3" />
-                            <span>Out of stock</span>
-                          </span>
-                        ) : isLow ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold">
-                            <AlertTriangle className="w-3 h-3" />
-                            <span>Low stock</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
-                            <Check className="w-3 h-3" />
-                            <span>In stock</span>
-                          </span>
-                        )}
-                        {isExpiring && <span className="text-[10px] font-semibold text-orange-700">Expiring soon</span>}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-3 rounded-lg bg-slate-50 p-3 text-xs">
+                      <div>
+                        <p className="text-slate-500">Balance</p>
+                        <p className="mt-0.5 font-mono font-bold tabular-nums text-slate-900">{item.currentBalance} {item.unit}</p>
                       </div>
-                    </td>
-
-                    <td className="py-3 px-3 text-right font-mono tabular-nums text-slate-700 text-xs font-medium">
-                      {item.costPriceGhc.toFixed(2)}
-                    </td>
-
-                    <td className="py-3 px-3 text-right font-mono tabular-nums text-slate-700 text-xs font-semibold">
-                      {item.sellingPriceGhc.toFixed(2)}
-                    </td>
-
-                    <td className="py-3 px-4 sm:px-6 text-center">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          onClick={() => setItemToEdit(item)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded transition-colors shadow-2xs"
-                          aria-label={`Edit ${item.name}`}
-                        >
-                          <Pencil className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenBinCard(item.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded transition-colors shadow-2xs"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Bin card</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setDeleteError('');
-                            setItemToDelete(item);
-                          }}
-                          disabled={isDeletingItemId === item.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-700 bg-white hover:bg-rose-50 border border-rose-200 rounded transition-colors shadow-2xs disabled:opacity-60"
-                          aria-label={`Permanently delete ${item.name}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>{isDeletingItemId === item.id ? 'Deleting…' : 'Delete'}</span>
-                        </button>
+                      <div>
+                        <p className="text-slate-500">Minimum</p>
+                        <p className="mt-0.5 font-mono tabular-nums text-slate-800">{item.minThreshold} {item.unit}</p>
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      <div>
+                        <p className="text-slate-500">Earliest expiry</p>
+                        <p className={`mt-0.5 font-medium ${isExpiring ? 'text-rose-600' : 'text-slate-800'}`}>
+                          {item.earliestExpiry === 'None' ? 'None' : item.earliestExpiry}
+                          {isExpiring && <span className="ml-1 text-[10px]">(soon)</span>}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Selling price</p>
+                        <p className="mt-0.5 font-mono font-semibold tabular-nums text-slate-800">
+                          GH₵ {item.sellingPriceGhc.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="col-span-2 border-t border-slate-200 pt-2">
+                        <p className="text-slate-500">Cost price</p>
+                        <p className="mt-0.5 font-mono tabular-nums text-slate-700">
+                          GH₵ {item.costPriceGhc.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
 
-        {/* Footer */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setItemToEdit(item)}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                        aria-label={`Edit ${item.name}`}
+                      >
+                        <Pencil aria-hidden="true" className="h-3.5 w-3.5 text-slate-500" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleOpenBinCard(item.id)}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                      >
+                        <FileText aria-hidden="true" className="h-3.5 w-3.5 text-slate-500" />
+                        Bin card
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDeleteError('');
+                          setItemToDelete(item);
+                        }}
+                        disabled={isDeletingItemId === item.id}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-rose-200 px-2.5 py-2 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-50 disabled:opacity-60"
+                        aria-label={`Permanently delete ${item.name}`}
+                      >
+                        <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                        {isDeletingItemId === item.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+            <Package aria-hidden="true" className="h-10 w-10 text-slate-300" />
+            <p className="mt-3 text-sm font-semibold text-slate-700">No medicines match these filters</p>
+            <p className="mt-1 text-xs text-slate-500">Try another search or stock filter.</p>
+          </div>
+        )}
+
         <div className="p-3 sm:px-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
