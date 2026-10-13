@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { PharmacyProvider, usePharmacy } from './context/PharmacyContext';
+import { NotificationProvider, useNotification } from './context/NotificationContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { DashboardScreen } from './components/screens/DashboardScreen';
@@ -12,6 +13,8 @@ import { ManagementHubScreen } from './components/screens/ManagementHubScreen';
 import { AboutPoliciesScreen } from './components/screens/AboutPoliciesScreen';
 import { PendingTransfersScreen } from './components/screens/PendingTransfersScreen';
 import { LocationViewScreen } from './components/screens/LocationViewScreen';
+import { ConfirmationModal } from './components/ConfirmationModal';
+import { NotificationModal } from './components/NotificationModal';
 import type { HubTab } from './components/screens/ManagementHubScreen';
 import type { ActiveScreen } from './types/pharmacy';
 import { SupabaseModal } from './components/SupabaseModal';
@@ -29,6 +32,7 @@ const MANAGEMENT_TAB_BY_SCREEN: Partial<Record<ActiveScreen, HubTab>> = {
 
 const MainLayout: React.FC = () => {
   const { activeScreen, notification, clearNotification } = usePharmacy();
+  const { notification: modalNotification, confirmation, closeNotification, closeConfirmation } = useNotification();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -96,14 +100,33 @@ const MainLayout: React.FC = () => {
 
       {/* Supabase SQL Migration & Setup Hub Modal */}
       <SupabaseModal />
+
+      {/* Notification Modals */}
+      <NotificationModal
+        isOpen={modalNotification.isOpen}
+        onClose={closeNotification}
+        title={modalNotification.title}
+        message={modalNotification.message}
+        variant={modalNotification.variant}
+      />
+      <ConfirmationModal
+        isOpen={confirmation.isOpen}
+        onClose={closeConfirmation}
+        onConfirm={confirmation.onConfirm}
+        title={confirmation.title}
+        message={confirmation.message}
+        variant={confirmation.variant}
+      />
     </div>
   );
 };
 
 export default function App() {
   return (
-    <PharmacyProvider>
-      <MainLayout />
-    </PharmacyProvider>
+    <NotificationProvider>
+      <PharmacyProvider>
+        <MainLayout />
+      </PharmacyProvider>
+    </NotificationProvider>
   );
 }

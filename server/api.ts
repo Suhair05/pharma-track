@@ -1333,22 +1333,66 @@ export function createApiApp(dependencies: ApiDependencies = {}) {
     try {
       const profile = await requirePharmacy(res.locals.userId as string, res);
       if (!profile) return;
-      const { name, address } = isRecord(req.body) ? req.body : {};
+      const { name, address, createAsPharmacy, managerName, inventorySize, stockCategories } = isRecord(req.body) ? req.body : {};
+      
       if (!validText(name, 120) || (address !== undefined && typeof address !== 'string')) {
         res.status(400).json({ error: 'Enter a valid location name and address.' });
         return;
       }
-      const { data, error } = await supabase!.from('pharmacy_locations').insert({
-        pharmacy_id: profile.id,
-        name: name.trim(),
-        address: typeof address === 'string' ? address.trim().slice(0, 300) : '',
-      }).select('*').single();
-      if (error) {
-        console.error('Location creation failed:', error.message);
-        res.status(400).json({ error: 'We could not add this location. Location names must be unique.' });
-        return;
+
+      if (createAsPharmacy === true) {
+        // Create as a separate pharmacy entity
+        const validCategories = ['prescription_medicines', 'over_the_counter', 'controlled_drugs', 'herbal_and_supplements', 'medical_supplies'];
+        const categories = Array.isArray(stockCategories) ? stockCategories : profile.stock_categories || ['prescription_medicines', 'over_the_counter'];
+        
+        if (!categories.every((cat: unknown) => typeof cat === 'string' && validCategories.includes(cat))) {
+          res.status(400).json({ error: 'Invalid stock categories.' });
+          return;
+        }
+
+        const { data, error } = await supabase!
+          .from('pharmacies')
+          .insert({
+            owner_id: res.locals.userId,
+            name: name.trim(),
+            manager_name: managerName || profile.manager_name,
+            inventory_size: inventorySize || profile.inventory_size || 'medium',
+            stock_categories: categories,
+          })
+          .select(profileColumns)
+          .single();
+
+        if (error) {
+          console.error('Pharmacy creation from location failed:', error.message);
+          res.status(500).json({ error: 'We could not create this pharmacy.' });
+          return;
+        }
+
+        // Create a primary location for the new pharmacy
+        await supabase!
+          .from('pharmacy_locations')
+          .insert({
+            pharmacy_id: data.id,
+            name: 'Main Store',
+            address: typeof address === 'string' ? address.trim().slice(0, 300) : '',
+            is_primary: true,
+          });
+
+        res.status(201).json({ pharmacy: data });
+      } else {
+        // Create as a storage location within current pharmacy
+        const { data, error } = await supabase!.from('pharmacy_locations').insert({
+          pharmacy_id: profile.id,
+          name: name.trim(),
+          address: typeof address === 'string' ? address.trim().slice(0, 300) : '',
+        }).select('*').single();
+        if (error) {
+          console.error('Location creation failed:', error.message);
+          res.status(400).json({ error: 'We could not add this location. Location names must be unique.' });
+          return;
+        }
+        res.status(201).json({ location: data });
       }
-      res.status(201).json({ location: data });
     } catch (error) {
       next(error);
     }

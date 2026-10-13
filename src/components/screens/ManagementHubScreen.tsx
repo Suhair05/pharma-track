@@ -6,6 +6,7 @@ import {
 import { apiGet, apiPatch, apiPost } from '../../services/api';
 import { usePharmacy } from '../../context/PharmacyContext';
 import { useProfile } from '../../context/ProfileContext';
+import { useNotification } from '../../context/NotificationContext';
 import type { ActiveScreen } from '../../types/pharmacy';
 
 export type HubTab = 'insights' | 'safety' | 'suppliers' | 'access' | 'patients' | 'locations' | 'barcode';
@@ -78,6 +79,7 @@ const PAGE_TITLES: Record<HubTab, string> = {
 export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initialTab = 'insights' }) => {
   const { setActiveScreen, setSelectedItemId, reloadInventory, setSelectedLocationId } = usePharmacy();
   const { profile } = useProfile();
+  const { showConfirmation } = useNotification();
   const [tab, setTab] = useState<HubTab>(initialTab);
   const [data, setData] = useState<ManagementData>(emptyData);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -495,10 +497,15 @@ export const ManagementHubScreen: React.FC<{ initialTab?: HubTab }> = ({ initial
                   {data.locations.length ? <ul className="divide-y divide-slate-100">{data.locations.map((location) => {
                     const qty = data.batches.filter((batch) => batch.location_id === location.id).reduce((sum, batch) => sum + batch.current_quantity, 0);
                     return <li key={location.id} className="flex justify-between gap-3 py-3 text-sm"><button onClick={() => {
-                      if (confirm(`Switch to ${location.name}? This will show inventory and operations specific to this location.`)) {
-                        setSelectedLocationId(location.id);
-                        setActiveScreen('location-view');
-                      }
+                      showConfirmation(
+                        `Switch to ${location.name}`,
+                        'This will show inventory and operations specific to this location.',
+                        () => {
+                          setSelectedLocationId(location.id);
+                          setActiveScreen('location-view');
+                        },
+                        'info'
+                      );
                     }} className="text-left flex-1 hover:bg-slate-50 rounded px-2 py-1 -ml-2 transition-colors cursor-pointer"><span><strong className="text-slate-800">{location.name}</strong>{location.is_primary && <span className="ml-2 rounded-full bg-brand-50 px-2 py-1 text-xs text-brand-700">Primary</span>}<span className="block text-xs text-slate-500">{location.address || 'No address recorded'}</span></span></button><span className="text-right font-medium text-slate-600">{qty} units</span></li>;
                   })}</ul> : <Empty>No locations have been set up.</Empty>}
                   {profile?.role === 'admin' && <form className="mt-4 space-y-3 border-t border-slate-100 pt-4" onSubmit={(event) => {
