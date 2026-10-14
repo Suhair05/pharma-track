@@ -1,11 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Layers,
   ShoppingCart,
   DollarSign,
   RefreshCw,
-  Database,
   X,
   ClipboardList,
   BarChart3,
@@ -43,8 +42,34 @@ const navItems: { id: ActiveScreen; label: string; icon: React.ElementType }[] =
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) => {
-  const { activeScreen, setActiveScreen, setIsSchemaModalOpen } = usePharmacy();
+  const { activeScreen, setActiveScreen, items, syncTimestamp } = usePharmacy();
   const { profile } = useProfile();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Set loading based on whether data has been loaded
+    setIsLoading(!syncTimestamp);
+  }, [syncTimestamp]);
+
+  useEffect(() => {
+    // Add custom animation keyframes
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes continuous-pulse {
+        0%, 100% { transform: scale(1); }
+        25% { transform: scale(1.15); }
+        50% { transform: scale(1.25); }
+        75% { transform: scale(1.15); }
+      }
+      .animate-continuous-pulse {
+        animation: continuous-pulse 1.2s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   const visibleNavItems = profile?.stock_categories.includes('controlled_drugs')
     ? [...navItems, { id: 'controlled-register' as const, label: 'Controlled drug register', icon: ClipboardList }]
     : navItems;
@@ -103,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
           {/* Brand */}
           <div className="flex h-16 items-center justify-between px-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600">
+              <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 ${isLoading ? 'animate-continuous-pulse' : ''}`}>
                 <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z" />
                 </svg>
@@ -146,17 +171,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
               );
             })}
           </nav>
-        </div>
-
-        {/* Footer: dev tools only */}
-        <div className="border-t border-slate-100 p-4">
-          <button
-            onClick={() => setIsSchemaModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs text-slate-400 transition-colors hover:text-slate-700"
-          >
-            <Database className="h-3.5 w-3.5" />
-            Database schema
-          </button>
         </div>
       </aside>
     </>
